@@ -1,0 +1,38 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Build MCP Server",
+			"type": "process",
+			"command": "dotnet",
+			"args": [
+				"build",
+				"${workspaceFolder}/ProtectedMcpServer.csproj"
+			],
+			"group": "build",
+			"problemMatcher": "$msCompile"
+		},
+		{
+			"label": "Run MCP Server (Docker)",
+			"type": "shell",
+			"command": "docker-compose up",
+			"group": "none",
+			"isBackground": true,
+			"problemMatcher": []
+		},
+		{
+			"label": "Stop MCP Server (Docker)",
+			"type": "shell",
+			"command": "docker-compose down",
+			"group": "none",
+			"problemMatcher": []
+		},
+		{
+			"label": "Generate JWT Token",
+			"type": "shell",
+			"command": ".\\generate-jwt.ps1",
+			"group": "none",
+			"problemMatcher": []
+		}
+	]
+}

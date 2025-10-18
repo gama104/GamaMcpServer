@@ -1,0 +1,60 @@
+# Build outputs
+bin/
+obj/
+[Dd]ebug/
+[Rr]elease/
+*.dll
+*.pdb
+*.exe
+
+# User-specific files
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.userprefs
+
+# Secrets and environment variables
+.env
+*.env
+!.env.example
+appsettings.Development.json
+appsettings.Production.json
+
+# VS Code (keep only essential files)
+.vscode/*
+!.vscode/mcp.json
+!.vscode/tasks.json
+
+# Data files (contains sensitive test data)
+Data/taxpayer-data.json
+
+# Logs
+*.log
+logs/
+
+# OS files
+.DS_Store
+Thumbs.db
+*.swp
+
+# JetBrains Rider
+.idea/
+*.sln.iml
+
+# Visual Studio
+.vs/
+*.cache
+
+# NuGet packages
+*.nupkg
+packages/
+
+# Test results
+TestResults/
+*.trx
+
+# Temporary files
+tmp/
+temp/
+*.tmp

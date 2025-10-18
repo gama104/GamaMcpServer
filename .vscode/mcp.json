@@ -1,0 +1,20 @@
+{
+	"servers": {
+		"taxpayer-mcp-server": {
+			"type": "http",
+			"url": "http://localhost:7071/mcp",
+			"headers": {
+				"Authorization": "Bearer ${input:JWT_TOKEN}"
+			},
+			"description": "Taxpayer MCP Server (C# .NET 9) - User-scoped tax data access"
+		}
+	},
+	"inputs": [
+				{
+			"password": true,
+			"id": "JWT_TOKEN",
+			"description": "Enter the JWT token for the Taxpayer MCP Server",
+			"type": "promptString"
+		}
+	]
+}

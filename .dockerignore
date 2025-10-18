@@ -1,0 +1,43 @@
+# .NET build artifacts
+bin/
+obj/
+out/
+
+# Visual Studio / VS Code
+.vs/
+.vscode/
+*.user
+*.suo
+*.cache
+
+# Build results
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+
+# Docker
+Dockerfile*
+docker-compose*
+.dockerignore
+
+# Documentation
+*.md
+README*
+
+# Scripts
+*.ps1
+*.sh
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Misc
+*.log
+*.tmp
+.DS_Store
+Thumbs.db
+
+

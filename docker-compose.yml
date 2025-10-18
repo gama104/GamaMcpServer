@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  taxpayer-mcp:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: taxpayer-mcp-server
+    ports:
+      - "7071:7071"
+    environment:
+      # SECURITY: Load JWT_SECRET from .env file (not committed to git)
+      - JWT_SECRET=${JWT_SECRET:-PLACEHOLDER-CHANGE-IN-PRODUCTION}
+      - ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT:-Production}
+      - DOTNET_RUNNING_IN_CONTAINER=true
+      - PORT=7071
+    # SECURITY: Load environment variables from .env file (create from .env.example)
+    env_file:
+      - .env
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:7071/"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    # SECURITY: Drop all capabilities and add only what's needed
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    # SECURITY: Run with limited resources
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+    networks:
+      - mcp-network
+    # SECURITY: Use tmpfs for temporary files
+    tmpfs:
+      - /tmp
+
+networks:
+  mcp-network:
+    driver: bridge
+
+
