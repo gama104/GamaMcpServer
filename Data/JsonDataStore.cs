@@ -436,14 +436,4 @@ public class JsonDataStore : IDataStore
     }
 }
 
-/// <summary>
-/// Container for all data types
-/// </summary>
-public class DataContainer
-{
-    public List<Taxpayer> Taxpayers { get; set; } = new();
-    public List<TaxReturn> TaxReturns { get; set; } = new();
-    public List<Deduction> Deductions { get; set; } = new();
-    public List<Document> Documents { get; set; } = new();
-}
 

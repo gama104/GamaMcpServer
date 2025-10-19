@@ -6,6 +6,9 @@ using ProtectedMcpServer.Auth;
 using ProtectedMcpServer.Services;
 using ProtectedMcpServer.Data;
 using ProtectedMcpServer.Handlers;
+using ProtectedMcpServer.Application.Interfaces;
+using Microsoft.EntityFrameworkCore;
+using MediatR;
 using System.Text.Json;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -24,8 +27,21 @@ builder.Services.AddSingleton<JwtService>();
 // Add User Context Service (extracts user from JWT)
 builder.Services.AddScoped<IUserContext, UserContextService>();
 
-// Add Data Store (user-scoped data access)
-builder.Services.AddScoped<IDataStore, JsonDataStore>();
+// Add Entity Framework Core with In-Memory Database
+builder.Services.AddDbContext<ApplicationDbContext>(options =>
+{
+    options.UseInMemoryDatabase("TaxpayerDemoDb");
+});
+
+// Add Application DbContext interface
+builder.Services.AddScoped<IApplicationDbContext>(provider => 
+    provider.GetRequiredService<ApplicationDbContext>());
+
+// Add MediatR for CQRS pattern
+builder.Services.AddMediatR(typeof(Program).Assembly);
+
+// Add Data Store (user-scoped data access) - Now using CQRS pattern
+builder.Services.AddScoped<IDataStore, CqrsDataStore>();
 
 // Add Tax Resource Store (MCP resources - public reference data)
 builder.Services.AddSingleton<ITaxResourceStore, TaxResourceStore>();
@@ -59,6 +75,35 @@ builder.Services.AddCors(options =>
 });
 
 var app = builder.Build();
+
+// Seed data from JSON file or create sample data
+using (var scope = app.Services.CreateScope())
+{
+    var context = scope.ServiceProvider.GetRequiredService<IApplicationDbContext>();
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+    
+    try
+    {
+        var jsonPath = Path.Combine(app.Environment.ContentRootPath, "Data", "taxpayer-data.json");
+        if (File.Exists(jsonPath))
+        {
+            logger.LogInformation("Seeding database from JSON file: {Path}", jsonPath);
+            await DataSeeder.SeedFromJsonAsync(context, jsonPath);
+        }
+        else
+        {
+            logger.LogInformation("JSON file not found, creating sample data");
+            await DataSeeder.CreateSampleDataAsync(context);
+        }
+        
+        logger.LogInformation("Database seeded successfully");
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Error seeding database");
+        throw;
+    }
+}
 
 // HTTPS enforcement for production
 if (!app.Environment.IsDevelopment())
@@ -433,7 +478,11 @@ app.MapPost("/mcp", async (HttpContext context) =>
 });
 
 var port = Environment.GetEnvironmentVariable("PORT") ?? "7071";
-app.Urls.Add($"http://0.0.0.0:{port}");
+var urls = Environment.GetEnvironmentVariable("ASPNETCORE_URLS");
+if (string.IsNullOrEmpty(urls))
+{
+    app.Urls.Add($"http://127.0.0.1:{port}");
+}
 
 app.Logger.LogInformation("=================================");
 app.Logger.LogInformation("Taxpayer MCP Server (HTTP Transport)");
