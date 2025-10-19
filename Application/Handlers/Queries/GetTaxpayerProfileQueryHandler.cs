@@ -4,7 +4,7 @@ using ProtectedMcpServer.Application.Interfaces;
 using ProtectedMcpServer.Application.Queries;
 using ProtectedMcpServer.Models;
 
-namespace ProtectedMcpServer.Application.Handlers;
+namespace ProtectedMcpServer.Application.Handlers.Queries;
 
 /// <summary>
 /// Handler for GetTaxpayerProfileQuery following 2025 CQRS best practices
