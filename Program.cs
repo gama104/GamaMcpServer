@@ -3,10 +3,10 @@
 
 using ProtectedMcpServer.Tools;
 using ProtectedMcpServer.Auth;
-using ProtectedMcpServer.Services;
+using ProtectedMcpServer.Application.Interfaces;
+using ProtectedMcpServer.Application.Services;
 using ProtectedMcpServer.Data;
 using ProtectedMcpServer.Handlers;
-using ProtectedMcpServer.Application.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using MediatR;
 using System.Text.Json;
@@ -28,23 +28,23 @@ builder.Services.AddSingleton<JwtService>();
 builder.Services.AddScoped<IUserContext, UserContextService>();
 
 // Add Entity Framework Core with In-Memory Database
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
+builder.Services.AddDbContext<TaxpayerDbContext>(options =>
 {
     options.UseInMemoryDatabase("TaxpayerDemoDb");
 });
 
 // Add Application DbContext interface
 builder.Services.AddScoped<IApplicationDbContext>(provider => 
-    provider.GetRequiredService<ApplicationDbContext>());
+    provider.GetRequiredService<TaxpayerDbContext>());
 
 // Add MediatR for CQRS pattern
 builder.Services.AddMediatR(typeof(Program).Assembly);
 
 // Add Data Store (user-scoped data access) - Now using CQRS pattern
-builder.Services.AddScoped<IDataStore, CqrsDataStore>();
+builder.Services.AddScoped<IDataStore, TaxpayerDataRepository>();
 
 // Add Tax Resource Store (MCP resources - public reference data)
-builder.Services.AddSingleton<ITaxResourceStore, TaxResourceStore>();
+builder.Services.AddSingleton<ITaxResourceStore, TaxReferenceDataRepository>();
 
 // Add Resource Handler (handles resources/list and resources/read)
 builder.Services.AddScoped<ResourceHandler>();
@@ -88,12 +88,12 @@ using (var scope = app.Services.CreateScope())
         if (File.Exists(jsonPath))
         {
             logger.LogInformation("Seeding database from JSON file: {Path}", jsonPath);
-            await DataSeeder.SeedFromJsonAsync(context, jsonPath);
+            await TaxpayerDataSeeder.SeedFromJsonAsync(context, jsonPath);
         }
         else
         {
             logger.LogInformation("JSON file not found, creating sample data");
-            await DataSeeder.CreateSampleDataAsync(context);
+            await TaxpayerDataSeeder.CreateSampleDataAsync(context);
         }
         
         logger.LogInformation("Database seeded successfully");

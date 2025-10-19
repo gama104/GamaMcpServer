@@ -1,6 +1,7 @@
 using System.Security.Claims;
+using ProtectedMcpServer.Application.Interfaces;
 
-namespace ProtectedMcpServer.Services;
+namespace ProtectedMcpServer.Application.Services;
 
 /// <summary>
 /// Service that extracts and provides the current user's context from HTTP request

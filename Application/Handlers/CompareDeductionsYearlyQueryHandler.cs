@@ -33,16 +33,19 @@ public class CompareDeductionsYearlyQueryHandler : IRequestHandler<CompareDeduct
             var deductions = await _context.Deductions
                 .AsNoTracking()
                 .Where(d => d.UserId == request.UserId && (d.TaxYear == request.Year1 || d.TaxYear == request.Year2))
+                .ToListAsync(cancellationToken);
+
+            var groupedDeductions = deductions
                 .GroupBy(d => d.TaxYear)
-                .ToDictionaryAsync(g => g.Key, g => g.OrderBy(d => d.Category).ThenBy(d => d.Description).ToList(), cancellationToken);
+                .ToDictionary(g => g.Key, g => g.OrderBy(d => d.Category).ThenBy(d => d.Description).ToList());
 
             _logger.LogInformation("Retrieved deductions comparison for user: {UserId}, years: {Year1} vs {Year2}, " +
                 "Year1 count: {Year1Count}, Year2 count: {Year2Count}", 
                 request.UserId, request.Year1, request.Year2,
-                deductions.GetValueOrDefault(request.Year1, new List<Deduction>()).Count,
-                deductions.GetValueOrDefault(request.Year2, new List<Deduction>()).Count);
+                groupedDeductions.GetValueOrDefault(request.Year1, new List<Deduction>()).Count,
+                groupedDeductions.GetValueOrDefault(request.Year2, new List<Deduction>()).Count);
 
-            return deductions;
+            return groupedDeductions;
         }
         catch (Exception ex)
         {

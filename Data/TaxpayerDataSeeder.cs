@@ -9,7 +9,7 @@ namespace ProtectedMcpServer.Data;
 /// Data seeding service following 2025 best practices
 /// Seeds in-memory database from existing JSON data file
 /// </summary>
-public static class DataSeeder
+public static class TaxpayerDataSeeder
 {
     /// <summary>
     /// Seeds the database with data from the JSON file

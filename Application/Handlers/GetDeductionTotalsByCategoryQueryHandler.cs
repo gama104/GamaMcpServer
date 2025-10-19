@@ -29,11 +29,14 @@ public class GetDeductionTotalsByCategoryQueryHandler : IRequestHandler<GetDeduc
 
         try
         {
-            var totals = await _context.Deductions
+            var deductions = await _context.Deductions
                 .AsNoTracking()
                 .Where(d => d.UserId == request.UserId && d.TaxYear == request.Year)
+                .ToListAsync(cancellationToken);
+
+            var totals = deductions
                 .GroupBy(d => d.Category)
-                .ToDictionaryAsync(g => g.Key, g => g.Sum(d => d.Amount), cancellationToken);
+                .ToDictionary(g => g.Key, g => g.Sum(d => d.Amount));
 
             _logger.LogInformation("Retrieved deduction totals for {Count} categories for user: {UserId}, year: {Year}", 
                 totals.Count, request.UserId, request.Year);

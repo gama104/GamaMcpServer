@@ -2,9 +2,8 @@ using ModelContextProtocol;
 using ModelContextProtocol.Server;
 using System.ComponentModel;
 using System.Text;
-using ProtectedMcpServer.Data;
+using ProtectedMcpServer.Application.Interfaces;
 using ProtectedMcpServer.Models;
-using ProtectedMcpServer.Services;
 
 namespace ProtectedMcpServer.Tools;
 

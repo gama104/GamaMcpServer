@@ -145,8 +145,10 @@ How much more mortgage interest can I deduct before hitting the limit?
 ### Data Isolation
 Every model has a `UserId` field. ALL queries filter by authenticated user:
 ```csharp
-// Example from JsonDataStore.cs
-return data.Taxpayers.FirstOrDefault(t => t.UserId == _userContext.UserId);
+// Example from TaxpayerDataRepository.cs
+var taxpayer = await _context.Taxpayers
+    .AsNoTracking()
+    .FirstOrDefaultAsync(t => t.UserId == request.UserId, cancellationToken);
 ```
 
 **Result:** User "test-user" can NEVER see "another-user" data! ✅
@@ -161,17 +163,25 @@ ProtectedMcpServer/
 ├── appsettings.json                  # Security configuration
 ├── Auth/
 │   └── JwtService.cs                 # OAuth 2.1 JWT validation
+├── Application/                      # CQRS Layer
+│   ├── Commands/                    # Command objects
+│   ├── Queries/                     # Query objects
+│   ├── Handlers/                    # Command/Query handlers
+│   ├── Interfaces/                  # Application interfaces
+│   │   ├── IApplicationDbContext.cs # EF Core context interface
+│   │   ├── IDataStore.cs            # User data interface
+│   │   ├── ITaxResourceStore.cs     # Tax resources interface
+│   │   └── IUserContext.cs          # User context interface
+│   └── Services/                    # Application services
+│       └── UserContextService.cs    # User context implementation
 ├── Handlers/
 │   └── ResourceHandler.cs            # MCP resources routing
-├── Services/
-│   ├── IUserContext.cs               # User context interface
-│   └── UserContextService.cs         # Extract user from JWT
-├── Data/
-│   ├── IDataStore.cs                 # User data interface
-│   ├── JsonDataStore.cs              # User-scoped data access
-│   ├── ITaxResourceStore.cs          # Tax resources interface
-│   └── TaxResourceStore.cs           # Tax reference data
-├── Models/
+├── Data/                             # Data Access Layer
+│   ├── TaxpayerDataRepository.cs     # CQRS user data access
+│   ├── TaxpayerDbContext.cs          # Entity Framework context
+│   ├── TaxpayerDataSeeder.cs         # Sample data seeding
+│   └── TaxReferenceDataRepository.cs # Tax reference data
+├── Models/                           # Domain Models (EF Core Entities)
 │   ├── Taxpayer.cs                   # Taxpayer profile
 │   ├── TaxReturn.cs                  # Tax return data
 │   ├── Deduction.cs                  # Deduction entries
@@ -296,7 +306,9 @@ public class ResourceHandler
 - **Protocol:** MCP 2025-03-26
 - **Authentication:** JWT Bearer with OAuth 2.1
 - **Container:** Docker (Alpine Linux, non-root user)
-- **Data:** JSON file-based (easily migrated to database)
+- **Architecture:** CQRS with MediatR
+- **Data Access:** Entity Framework Core with in-memory database
+- **Patterns:** Clean Architecture, Repository Pattern
 
 ---
 
@@ -608,7 +620,7 @@ Deductions:
 
 ## 🎓 Technical Details
 
-### Tools Implementation (Attribute-Based):
+### Tools Implementation (CQRS + Attribute-Based):
 ```csharp
 [McpServerToolType]
 public sealed class TaxpayerTools
@@ -618,6 +630,17 @@ public sealed class TaxpayerTools
     {
         var taxpayer = await _dataStore.GetTaxpayerProfileAsync();
         return FormatTaxpayerProfile(taxpayer);
+    }
+}
+
+// CQRS Query Handler
+public class GetTaxpayerProfileQueryHandler : IRequestHandler<GetTaxpayerProfileQuery, Taxpayer?>
+{
+    public async Task<Taxpayer?> Handle(GetTaxpayerProfileQuery request, CancellationToken cancellationToken)
+    {
+        return await _context.Taxpayers
+            .AsNoTracking()
+            .FirstOrDefaultAsync(t => t.UserId == request.UserId, cancellationToken);
     }
 }
 ```
@@ -641,9 +664,10 @@ public class ResourceHandler
 ```
 
 **Why different patterns?**
-- C# SDK v0.4.0 has `[McpServerTool]` attribute
-- C# SDK v0.4.0 does NOT have `[McpServerResource]` attribute
-- HTTP endpoints are the standard approach for resources ✅
+- **Tools**: C# SDK v0.4.0 has `[McpServerTool]` attribute + CQRS pattern
+- **Resources**: C# SDK v0.4.0 does NOT have `[McpServerResource]` attribute
+- **HTTP endpoints** are the standard approach for resources ✅
+- **CQRS pattern** provides clean separation of concerns and testability ✅
 
 ---
 

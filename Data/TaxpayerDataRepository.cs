@@ -1,7 +1,7 @@
 using MediatR;
+using ProtectedMcpServer.Application.Interfaces;
 using ProtectedMcpServer.Application.Queries;
 using ProtectedMcpServer.Models;
-using ProtectedMcpServer.Services;
 
 namespace ProtectedMcpServer.Data;
 
@@ -9,13 +9,13 @@ namespace ProtectedMcpServer.Data;
 /// CQRS-based data store following 2025 best practices
 /// Uses MediatR for query handling with Entity Framework Core
 /// </summary>
-public class CqrsDataStore : IDataStore
+public class TaxpayerDataRepository : IDataStore
 {
     private readonly IMediator _mediator;
     private readonly IUserContext _userContext;
-    private readonly ILogger<CqrsDataStore> _logger;
+    private readonly ILogger<TaxpayerDataRepository> _logger;
 
-    public CqrsDataStore(IMediator mediator, IUserContext userContext, ILogger<CqrsDataStore> logger)
+    public TaxpayerDataRepository(IMediator mediator, IUserContext userContext, ILogger<TaxpayerDataRepository> logger)
     {
         _mediator = mediator;
         _userContext = userContext;

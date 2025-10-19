@@ -1,5 +1,5 @@
 using System.Text.Json;
-using ProtectedMcpServer.Data;
+using ProtectedMcpServer.Application.Interfaces;
 
 namespace ProtectedMcpServer.Handlers;
 

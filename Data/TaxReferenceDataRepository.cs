@@ -1,4 +1,5 @@
 using System.Text.Json;
+using ProtectedMcpServer.Application.Interfaces;
 using ProtectedMcpServer.Models;
 
 namespace ProtectedMcpServer.Data;
@@ -8,15 +9,15 @@ namespace ProtectedMcpServer.Data;
 /// Provides READ-ONLY tax rules, brackets, forms, and deduction information
 /// This data is PUBLIC (not user-specific) but authoritative
 /// </summary>
-public class TaxResourceStore : ITaxResourceStore
+public class TaxReferenceDataRepository : ITaxResourceStore
 {
     private readonly string _resourcesPath;
-    private readonly ILogger<TaxResourceStore> _logger;
+    private readonly ILogger<TaxReferenceDataRepository> _logger;
     private readonly Dictionary<int, TaxRules> _taxRulesCache = new();
     private readonly Dictionary<int, TaxBrackets> _taxBracketsCache = new();
     private readonly Dictionary<int, StandardDeductions> _standardDeductionsCache = new();
 
-    public TaxResourceStore(ILogger<TaxResourceStore> logger, IWebHostEnvironment env)
+    public TaxReferenceDataRepository(ILogger<TaxReferenceDataRepository> logger, IWebHostEnvironment env)
     {
         _logger = logger;
         _resourcesPath = Path.Combine(env.ContentRootPath, "Resources");

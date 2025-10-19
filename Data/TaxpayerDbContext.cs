@@ -8,9 +8,9 @@ namespace ProtectedMcpServer.Data;
 /// Application database context following 2025 Entity Framework Core best practices
 /// Implements in-memory database for demo purposes with production-ready patterns
 /// </summary>
-public class ApplicationDbContext : DbContext, IApplicationDbContext
+public class TaxpayerDbContext : DbContext, IApplicationDbContext
 {
-    public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options)
+    public TaxpayerDbContext(DbContextOptions<TaxpayerDbContext> options) : base(options)
     {
     }
 

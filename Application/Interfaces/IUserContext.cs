@@ -1,4 +1,4 @@
-namespace ProtectedMcpServer.Services;
+namespace ProtectedMcpServer.Application.Interfaces;
 
 /// <summary>
 /// Interface for accessing the current authenticated user's context

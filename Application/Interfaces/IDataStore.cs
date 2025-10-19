@@ -1,6 +1,6 @@
 using ProtectedMcpServer.Models;
 
-namespace ProtectedMcpServer.Data;
+namespace ProtectedMcpServer.Application.Interfaces;
 
 /// <summary>
 /// Interface for data storage operations
