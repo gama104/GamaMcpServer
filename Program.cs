@@ -52,6 +52,32 @@ builder.Services.AddScoped<ResourceHandler>();
 // Add Taxpayer Tools (MCP tools)
 builder.Services.AddScoped<TaxpayerTools>();
 
+// Add Prompt Handler (MCP prompts - conversation templates)
+builder.Services.AddScoped<PromptHandler>();
+
+// Add Health Checks for monitoring
+builder.Services.AddHealthChecks()
+    .AddCheck("jwt-service", () => 
+    {
+        // Simple health check - in production, you'd check actual JWT service health
+        return Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult.Healthy("JWT service is available");
+    });
+
+// Add Rate Limiting for API protection
+builder.Services.AddRateLimiter(options =>
+{
+    options.GlobalLimiter = System.Threading.RateLimiting.PartitionedRateLimiter.Create<HttpContext, string>(context =>
+        System.Threading.RateLimiting.RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: context.User?.Identity?.Name ?? context.Connection.RemoteIpAddress?.ToString() ?? "anonymous",
+            factory: partition => new System.Threading.RateLimiting.FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 100,
+                Window = TimeSpan.FromMinutes(1),
+                QueueProcessingOrder = System.Threading.RateLimiting.QueueProcessingOrder.OldestFirst,
+                QueueLimit = 10
+            }));
+});
+
 // Add CORS with restricted origins (SECURITY: Prevent unauthorized cross-origin access)
 builder.Services.AddCors(options =>
 {
@@ -133,6 +159,12 @@ app.Use(async (context, next) =>
 
 app.UseCors();
 
+// Add Rate Limiting middleware
+app.UseRateLimiter();
+
+// Add Health Checks endpoint
+app.MapHealthChecks("/health");
+
 const string MCP_VERSION = "2025-03-26";
 var SUPPORTED_VERSIONS = new[] { "2024-11-05", "2025-03-26" };
 
@@ -156,6 +188,11 @@ app.MapGet("/", () => Results.Ok(new
         "CompareDeductionsYearly",
         "GetDocumentsByType",
         "GetDocumentsByYear"
+    },
+    prompts = new[] {
+        "GetPersonalizedTaxAdvice",
+        "CompareDeductionOptions", 
+        "GetTaxOptimizationAdvice"
     },
     timestamp = DateTime.UtcNow.ToString("O"),
     environment = app.Environment.EnvironmentName
@@ -253,7 +290,8 @@ app.MapPost("/mcp", async (HttpContext context) =>
                         capabilities = new 
                         { 
                             tools = new { },
-                            resources = new { subscribe = false, listChanged = false }
+                            resources = new { subscribe = false, listChanged = false },
+                            prompts = new { listChanged = false }
                         },
                         serverInfo = new { name = "taxpayer-mcp-server", version = "1.0.0" }
                     }
@@ -395,6 +433,50 @@ app.MapPost("/mcp", async (HttpContext context) =>
 
                 var resourceHandlerRead = context.RequestServices.GetRequiredService<ResourceHandler>();
                 return await resourceHandlerRead.HandleResourceRead(uriElement.GetString(), requestId);
+
+            case "prompts/list":
+                var promptHandler = context.RequestServices.GetRequiredService<PromptHandler>();
+                var promptsResult = await promptHandler.ListPromptsAsync();
+                return Results.Ok(new
+                {
+                    jsonrpc = "2.0",
+                    id = requestId,
+                    result = promptsResult
+                });
+
+            case "prompts/get":
+                if (!requestBody.TryGetProperty("params", out var paramsElementPrompt) ||
+                    !paramsElementPrompt.TryGetProperty("name", out var nameElement))
+                {
+                    return Results.BadRequest(new { error = "Name parameter is required" });
+                }
+
+                var promptName = nameElement.GetString() ?? throw new ArgumentException("Prompt name cannot be null");
+                var promptArguments = new Dictionary<string, object>();
+                
+                if (paramsElementPrompt.TryGetProperty("arguments", out var argsElementPrompt))
+                {
+                    foreach (var prop in argsElementPrompt.EnumerateObject())
+                    {
+                        promptArguments[prop.Name] = prop.Value.ValueKind switch
+                        {
+                            JsonValueKind.String => prop.Value.GetString()!,
+                            JsonValueKind.Number => prop.Value.GetInt32(),
+                            JsonValueKind.True => true,
+                            JsonValueKind.False => false,
+                            _ => prop.Value.ToString()
+                        };
+                    }
+                }
+
+                var promptHandlerGet = context.RequestServices.GetRequiredService<PromptHandler>();
+                var promptResult = await promptHandlerGet.GetPromptAsync(promptName, promptArguments);
+                return Results.Ok(new
+                {
+                    jsonrpc = "2.0",
+                    id = requestId,
+                    result = promptResult
+                });
 
             case "tools/call":
                 if (!requestBody.TryGetProperty("params", out var paramsElement))
