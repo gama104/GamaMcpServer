@@ -1,0 +1,146 @@
+{
+  "taxYear": 2024,
+  "brackets": [
+    {
+      "filingStatus": "Single",
+      "brackets": [
+        {
+          "minIncome": 0,
+          "maxIncome": 11000,
+          "rate": 0.10,
+          "description": "10% on income up to $11,000"
+        },
+        {
+          "minIncome": 11000,
+          "maxIncome": 44725,
+          "rate": 0.12,
+          "description": "12% on income from $11,000 to $44,725"
+        },
+        {
+          "minIncome": 44725,
+          "maxIncome": 95375,
+          "rate": 0.22,
+          "description": "22% on income from $44,725 to $95,375"
+        },
+        {
+          "minIncome": 95375,
+          "maxIncome": 182050,
+          "rate": 0.24,
+          "description": "24% on income from $95,375 to $182,050"
+        },
+        {
+          "minIncome": 182050,
+          "maxIncome": 231250,
+          "rate": 0.32,
+          "description": "32% on income from $182,050 to $231,250"
+        },
+        {
+          "minIncome": 231250,
+          "maxIncome": 578125,
+          "rate": 0.35,
+          "description": "35% on income from $231,250 to $578,125"
+        },
+        {
+          "minIncome": 578125,
+          "maxIncome": null,
+          "rate": 0.37,
+          "description": "37% on income over $578,125"
+        }
+      ]
+    },
+    {
+      "filingStatus": "MarriedFilingJointly",
+      "brackets": [
+        {
+          "minIncome": 0,
+          "maxIncome": 22000,
+          "rate": 0.10,
+          "description": "10% on income up to $22,000"
+        },
+        {
+          "minIncome": 22000,
+          "maxIncome": 89450,
+          "rate": 0.12,
+          "description": "12% on income from $22,000 to $89,450"
+        },
+        {
+          "minIncome": 89450,
+          "maxIncome": 190750,
+          "rate": 0.22,
+          "description": "22% on income from $89,450 to $190,750"
+        },
+        {
+          "minIncome": 190750,
+          "maxIncome": 364200,
+          "rate": 0.24,
+          "description": "24% on income from $190,750 to $364,200"
+        },
+        {
+          "minIncome": 364200,
+          "maxIncome": 462500,
+          "rate": 0.32,
+          "description": "32% on income from $364,200 to $462,500"
+        },
+        {
+          "minIncome": 462500,
+          "maxIncome": 693750,
+          "rate": 0.35,
+          "description": "35% on income from $462,500 to $693,750"
+        },
+        {
+          "minIncome": 693750,
+          "maxIncome": null,
+          "rate": 0.37,
+          "description": "37% on income over $693,750"
+        }
+      ]
+    },
+    {
+      "filingStatus": "HeadOfHousehold",
+      "brackets": [
+        {
+          "minIncome": 0,
+          "maxIncome": 15700,
+          "rate": 0.10,
+          "description": "10% on income up to $15,700"
+        },
+        {
+          "minIncome": 15700,
+          "maxIncome": 59850,
+          "rate": 0.12,
+          "description": "12% on income from $15,700 to $59,850"
+        },
+        {
+          "minIncome": 59850,
+          "maxIncome": 95350,
+          "rate": 0.22,
+          "description": "22% on income from $59,850 to $95,350"
+        },
+        {
+          "minIncome": 95350,
+          "maxIncome": 182050,
+          "rate": 0.24,
+          "description": "24% on income from $95,350 to $182,050"
+        },
+        {
+          "minIncome": 182050,
+          "maxIncome": 231250,
+          "rate": 0.32,
+          "description": "32% on income from $182,050 to $231,250"
+        },
+        {
+          "minIncome": 231250,
+          "maxIncome": 578100,
+          "rate": 0.35,
+          "description": "35% on income from $231,250 to $578,100"
+        },
+        {
+          "minIncome": 578100,
+          "maxIncome": null,
+          "rate": 0.37,
+          "description": "37% on income over $578,100"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "taxYear": 2024,
+  "deductions": [
+    {
+      "filingStatus": "Single",
+      "amount": 14600,
+      "description": "Standard deduction for single filers"
+    },
+    {
+      "filingStatus": "MarriedFilingJointly",
+      "amount": 29200,
+      "description": "Standard deduction for married filing jointly"
+    },
+    {
+      "filingStatus": "MarriedFilingSeparately",
+      "amount": 14600,
+      "description": "Standard deduction for married filing separately"
+    },
+    {
+      "filingStatus": "HeadOfHousehold",
+      "amount": 21900,
+      "description": "Standard deduction for head of household"
+    },
+    {
+      "filingStatus": "QualifyingWidow",
+      "amount": 29200,
+      "description": "Standard deduction for qualifying widow(er)"
+    }
+  ]
+}

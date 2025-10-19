@@ -2,7 +2,7 @@
 
 **Production-ready C# MCP server for tax data management with OAuth 2.1 security, user-scoped data access, and comprehensive tax resources.**
 
-**Status:** ✅ Production Ready | **Security:** ⭐⭐⭐⭐⭐ 9.8/10 | **Tests:** 17/17 Passing | **Protocol:** MCP 2025-03-26
+**Status:** ✅ Production Ready | **Security:** ⭐⭐⭐⭐⭐ 9.8/10 | **Tests:** 20/20 Passing | **Protocol:** MCP 2025-03-26
 
 ---
 
@@ -13,7 +13,7 @@
 - **User Data Isolation** - Multi-tenant with zero data leakage
 - **Tax Reference Resources** - IRS rules, brackets, forms, limits
 - **Docker Containerized** - Hardened Alpine Linux container
-- **Fully Tested** - 100% test coverage (17/17 passing)
+- **Fully Tested** - 100% test coverage (20/20 passing)
 - **MCP 2025-03-26 Compliant** - Latest protocol version with proper prompts implementation
 
 ---
@@ -43,9 +43,28 @@ docker-compose up -d
 .\test-taxpayer-tools.ps1
 ```
 
-Expected: **17/17 tests passing** ✅
+Expected: **20/20 tests passing** ✅
 
-### 4. Use in VS Code
+**🎉 That's it! Your server is ready with sample data for 2 users.**
+
+### 4. Data Storage & Sample Data
+
+**Zero Setup Required:**
+- **In-Memory Database**: Entity Framework Core with automatic seeding
+- **Sample Data Included**: 2 test users with realistic tax data
+- **Auto-Seeding**: Data created automatically on startup
+- **User Isolation**: Each user only sees their own data
+
+**Sample Users:**
+- **test-user** (John Doe): Married filing jointly, 2023-2024 returns, mortgage interest, property taxes
+- **another-user** (Jane Smith): Single filer, 2023 return, state/local taxes
+
+**Data Sources:**
+- **User Data**: `Data/taxpayer-data.json` (included) or programmatically generated
+- **Tax Resources**: `Resources/*.json` files (tax brackets, standard deductions, etc.)
+- **Database**: In-memory Entity Framework Core database
+
+### 5. Use in VS Code
 1. Open `.vscode/mcp.json`
 2. Paste your JWT token
 3. Open Copilot Chat (`Ctrl+Shift+I`)
@@ -893,6 +912,45 @@ taxpayer-mcp-server
 ```powershell
 .\test-taxpayer-tools.ps1
 ```
+
+---
+
+## 🚨 Troubleshooting
+
+### Server Won't Start
+```powershell
+# Check Docker status
+docker ps
+
+# View logs
+docker logs taxpayer-mcp-server -f
+
+# Restart if needed
+docker-compose down
+docker-compose up -d
+```
+
+### Tests Failing
+```powershell
+# Check server health first
+curl http://localhost:7071/health
+
+# Regenerate JWT token
+.\generate-jwt.ps1
+
+# Run tests again
+.\test-taxpayer-tools.ps1
+```
+
+### No Data Showing
+- **Check**: Server logs for seeding messages
+- **Verify**: JWT token is valid and not expired
+- **Test**: Use "test-user" as the user ID in your token
+
+### Common Issues
+- **401 Unauthorized**: Check JWT token is valid and in Authorization header
+- **500 Internal Server Error**: Check container logs and health endpoint
+- **Data Not Found**: Ensure user has data (test-user has sample data)
 
 ---
 
