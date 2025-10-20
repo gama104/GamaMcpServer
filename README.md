@@ -25,29 +25,127 @@
 - PowerShell (for scripts)
 - .NET 9.0 SDK (optional, for local development)
 
-### 1. Start the Server
+### Option 1: Interactive Setup (Recommended)
 ```powershell
 cd ProtectedMcpServer
+.\start-server.ps1 -Interactive
+```
+
+This script will:
+- ✅ Ask you to choose Docker or Local deployment
+- ✅ Let you specify a custom port (for local development)
+- ✅ Create `.env` file with secure JWT secret
+- ✅ Start the server with your configuration
+- ✅ Generate your JWT token
+- ✅ Run health checks
+
+### Option 2: Quick Setup with Custom Port
+```powershell
+# Start local server on custom port
+.\start-server.ps1 -Local -Port 8080
+
+# Start Docker container (always port 7071)
+.\start-server.ps1 -Docker
+```
+
+### Option 3: Manual Setup
+
+#### 1. Create Environment File
+```powershell
+# Copy template and generate secure JWT secret
+Copy-Item env.example.txt .env
+
+# Edit .env file and set a strong JWT_SECRET (32+ characters)
+# Or use PowerShell to generate one:
+$jwtSecret = [Convert]::ToBase64String((1..32 | ForEach-Object { Get-Random -Maximum 256 }))
+(Get-Content .env) -replace 'JWT_SECRET=.*', "JWT_SECRET=$jwtSecret" | Set-Content .env
+```
+
+#### 2. Start the Server
+```powershell
+# Docker (Recommended)
 docker-compose up -d
+
+# OR Local development
+$env:JWT_SECRET = (Get-Content .env | Where-Object { $_ -match '^JWT_SECRET=' } | ForEach-Object { ($_ -split '=',2)[1] })
+dotnet run
 ```
 
-### 2. Generate JWT Token
+#### 3. Test Everything
 ```powershell
-.\generate-jwt.ps1
+# Test Docker container (recommended)
+.\test-mcp-server.ps1 -Docker
+
+# OR Test local server on default port
+.\test-mcp-server.ps1 -Local
+
+# OR Test local server on custom port
+.\test-mcp-server.ps1 -Local -Port 8080
+
+# OR Test custom server
+.\test-mcp-server.ps1 -Server "http://localhost:8080"
 ```
 
-**Copy the token** - you'll need it for authentication!
-
-### 3. Test Everything
-```powershell
-.\test-taxpayer-tools.ps1
-```
-
-Expected: **20/20 tests passing** ✅
+Expected: **All tests passing** ✅
 
 **🎉 That's it! Your server is ready with sample data for 2 users.**
 
-### 4. Data Storage & Sample Data
+### 4. Repository Structure
+
+**Clean & Focused:** This repository contains only the essential files needed to run the MCP server:
+
+#### **Core Files:**
+- `start-server.ps1` - Main launcher with interactive setup
+- `test-mcp-server.ps1` - Comprehensive testing script
+- `generate-jwt.ps1` - JWT token generation
+- `env.example.txt` - Environment template
+- `README.md` - This documentation
+
+#### **Application Files:**
+- `Program.cs` - Main application entry point
+- `Application/` - CQRS implementation (queries, handlers, interfaces)
+- `Data/` - Data access layer (repositories, context, seeding)
+- `Models/` - Domain models and entities
+- `Tools/` - MCP tools implementation
+- `Handlers/` - MCP resource and prompt handlers
+- `Auth/` - JWT authentication service
+- `Resources/` - Tax reference data (brackets, deductions, etc.)
+
+#### **Deployment Files:**
+- `docker-compose.yml` - Docker deployment configuration
+- `Dockerfile` - Container build instructions
+- `appsettings.json` - Application configuration
+
+**No clutter:** Development-only files have been removed for a cleaner first-time experience.
+
+### 5. Port Configuration
+
+The server supports **configurable ports** following .NET Core best practices:
+
+#### **Port Selection Guidelines:**
+- **1024-49151**: Registered ports (avoid unless necessary)
+- **49152-65535**: Dynamic/private ports (recommended for development)
+- **7071**: Default port (good for production)
+
+#### **Environment Variable Override:**
+```powershell
+# Set custom port via environment variable
+$env:ASPNETCORE_URLS = "http://localhost:8080"
+.\start-server.ps1 -Local
+
+# Or use PORT variable
+$env:PORT = 8080
+.\start-server.ps1 -Local
+```
+
+#### **Benefits of Configurable Ports:**
+- ✅ **Avoid Conflicts** - Multiple developers can use different ports
+- ✅ **Environment Flexibility** - Different ports for dev/staging/production
+- ✅ **Security** - Use non-standard ports to reduce attack surface
+- ✅ **Compliance** - Meet organizational port requirements
+- ✅ **Best Practices** - Follow .NET Core and industry standards
+
+### 5. Data Storage & Sample Data
 
 **Zero Setup Required:**
 - **In-Memory Database**: Entity Framework Core with automatic seeding
@@ -948,9 +1046,50 @@ curl http://localhost:7071/health
 - **Test**: Use "test-user" as the user ID in your token
 
 ### Common Issues
-- **401 Unauthorized**: Check JWT token is valid and in Authorization header
-- **500 Internal Server Error**: Check container logs and health endpoint
-- **Data Not Found**: Ensure user has data (test-user has sample data)
+
+#### 401 Unauthorized (JWT Secret Mismatch)
+**Symptom**: Health endpoint OK, but all MCP calls return 401
+**Cause**: Server and tests using different JWT secrets
+**Fix**: 
+```powershell
+# Ensure .env file exists with correct JWT_SECRET
+Copy-Item env.example.txt .env
+# Edit .env and set a strong JWT_SECRET (32+ characters)
+# Restart server with same secret
+```
+
+#### Port Already in Use
+**Symptom**: "Address already in use" error
+**Fix**:
+```powershell
+# Stop all dotnet processes
+Get-Process dotnet | Stop-Process -Force
+# Or use different port
+$env:ASPNETCORE_URLS = "http://localhost:7072"
+```
+
+#### Docker Container Won't Start
+**Symptom**: Container exits immediately
+**Fix**:
+```powershell
+# Check logs
+docker logs taxpayer-mcp-server
+# Ensure .env file exists
+Copy-Item env.example.txt .env
+# Rebuild container
+docker-compose down
+docker-compose up -d --build
+```
+
+#### PowerShell Script Errors
+**Symptom**: Script execution fails
+**Fix**:
+```powershell
+# Enable script execution
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+# Run with bypass if needed
+PowerShell -ExecutionPolicy Bypass -File .\setup-first-time.ps1
+```
 
 ---
 

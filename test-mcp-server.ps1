@@ -1,6 +1,47 @@
-# Test Taxpayer MCP Server - All Tools
+# Comprehensive Test Script for Taxpayer MCP Server
+# Tests both local and Docker setups with proper JWT authentication
 
-$SERVER = "http://localhost:7072"
+param(
+    [switch]$Docker,
+    [switch]$Local,
+    [string]$Server = "http://localhost:7071",
+    [int]$Port = 7071
+)
+
+# Validate port number
+if ($Port -lt 1024 -or $Port -gt 65535) {
+    Write-Host "❌ Invalid port number: $Port" -ForegroundColor Red
+    Write-Host "Port must be between 1024 and 65535" -ForegroundColor Yellow
+    exit 1
+}
+
+# Check if port is available (for local testing)
+if ($Local -or (-not $Docker -and -not $Server.StartsWith("http://localhost:7071"))) {
+    try {
+        $connection = Test-NetConnection -ComputerName localhost -Port $Port -WarningAction SilentlyContinue
+        if ($connection.TcpTestSucceeded) {
+            Write-Host "⚠️  Warning: Port $Port appears to be in use" -ForegroundColor Yellow
+            Write-Host "Make sure your server is running on port $Port" -ForegroundColor Yellow
+        }
+    } catch {
+        # Test-NetConnection might not be available on all systems
+        Write-Host "Note: Could not check port availability" -ForegroundColor Gray
+    }
+}
+
+# Determine which server to test
+if ($Docker) {
+    $Server = "http://localhost:7071"  # Docker always uses 7071 (mapped in docker-compose)
+    Write-Host "Testing Docker container on port 7071..." -ForegroundColor Yellow
+} elseif ($Local) {
+    $Server = "http://localhost:$Port"
+    Write-Host "Testing local server on port $Port..." -ForegroundColor Yellow
+} else {
+    $Server = "http://localhost:$Port"
+    Write-Host "Testing server at: $Server" -ForegroundColor Yellow
+}
+
+Write-Host "`n====== TESTING TAXPAYER MCP SERVER ======`n" -ForegroundColor Cyan
 
 # Read JWT_SECRET from .env file
 $envFile = ".env"
@@ -13,10 +54,9 @@ if (Test-Path $envFile) {
     }
 }
 if ([string]::IsNullOrEmpty($SECRET)) {
+    Write-Host "Warning: JWT_SECRET not found in .env, using fallback" -ForegroundColor Yellow
     $SECRET = "PLACEHOLDER-DO-NOT-USE-IN-PRODUCTION"
 }
-
-Write-Host "`n====== TESTING TAXPAYER MCP SERVER ======`n" -ForegroundColor Cyan
 
 # Generate JWT Token with OAuth 2.1 claims (audience/issuer)
 function New-JwtToken {
@@ -41,22 +81,24 @@ Write-Host "    User 2 (another-user): $($tokenUser2.Substring(0,50))..." -Foreg
 # Test 1: Health Check
 Write-Host "`n[2] Testing Health Endpoint..." -ForegroundColor Yellow
 try {
-    $health = Invoke-RestMethod -Uri "$SERVER/" -Method Get
+    $health = Invoke-RestMethod -Uri "$Server/" -Method Get -TimeoutSec 10
     Write-Host "    SUCCESS: Server is healthy" -ForegroundColor Green
     Write-Host "    - Name: $($health.name)" -ForegroundColor Gray
     Write-Host "    - Protocol: $($health.protocolVersion)" -ForegroundColor Gray
     Write-Host "    - Tools: $($health.tools.Count)" -ForegroundColor Gray
 } catch {
     Write-Host "    FAILED: $($_.Exception.Message)" -ForegroundColor Red
+    Write-Host "    Make sure the server is running on $Server" -ForegroundColor Yellow
+    exit 1
 }
 
 # Test 2: List Tools
 Write-Host "`n[3] Testing tools/list..." -ForegroundColor Yellow
 try {
     $body = '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
-    $result = Invoke-RestMethod -Uri "$SERVER/mcp" -Method Post `
+    $result = Invoke-RestMethod -Uri "$Server/mcp" -Method Post `
         -Headers @{"Authorization"="Bearer $tokenUser1"; "Content-Type"="application/json"} `
-        -Body $body
+        -Body $body -TimeoutSec 10
     
     Write-Host "    SUCCESS: Retrieved $($result.result.tools.Count) tools" -ForegroundColor Green
     foreach ($tool in $result.result.tools) {
@@ -64,15 +106,20 @@ try {
     }
 } catch {
     Write-Host "    FAILED: $($_.Exception.Message)" -ForegroundColor Red
+    if ($_.Exception.Response.StatusCode -eq 401) {
+        Write-Host "    This is likely a JWT secret mismatch issue" -ForegroundColor Yellow
+        Write-Host "    Make sure your .env file has the correct JWT_SECRET" -ForegroundColor Yellow
+    }
+    exit 1
 }
 
 # Test 3: GetTaxpayerProfile (User 1)
 Write-Host "`n[4] Testing GetTaxpayerProfile (User 1)..." -ForegroundColor Yellow
 try {
     $body = '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"GetTaxpayerProfile","arguments":{}}}'
-    $result = Invoke-RestMethod -Uri "$SERVER/mcp" -Method Post `
+    $result = Invoke-RestMethod -Uri "$Server/mcp" -Method Post `
         -Headers @{"Authorization"="Bearer $tokenUser1"; "Content-Type"="application/json"} `
-        -Body $body
+        -Body $body -TimeoutSec 10
     
     $text = $result.result.content[0].text
     Write-Host "    SUCCESS: Got profile" -ForegroundColor Green
@@ -85,9 +132,9 @@ try {
 Write-Host "`n[5] Testing GetTaxReturns..." -ForegroundColor Yellow
 try {
     $body = '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"GetTaxReturns","arguments":{}}}'
-    $result = Invoke-RestMethod -Uri "$SERVER/mcp" -Method Post `
+    $result = Invoke-RestMethod -Uri "$Server/mcp" -Method Post `
         -Headers @{"Authorization"="Bearer $tokenUser1"; "Content-Type"="application/json"} `
-        -Body $body
+        -Body $body -TimeoutSec 10
     
     $text = $result.result.content[0].text
     Write-Host "    SUCCESS: Got tax returns" -ForegroundColor Green
@@ -101,9 +148,9 @@ try {
 Write-Host "`n[6] Testing GetDeductionsByYear (2023)..." -ForegroundColor Yellow
 try {
     $body = '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"GetDeductionsByYear","arguments":{"year":2023}}}'
-    $result = Invoke-RestMethod -Uri "$SERVER/mcp" -Method Post `
+    $result = Invoke-RestMethod -Uri "$Server/mcp" -Method Post `
         -Headers @{"Authorization"="Bearer $tokenUser1"; "Content-Type"="application/json"} `
-        -Body $body
+        -Body $body -TimeoutSec 10
     
     $text = $result.result.content[0].text
     Write-Host "    SUCCESS: Got deductions" -ForegroundColor Green
@@ -118,9 +165,9 @@ try {
 Write-Host "`n[7] Testing CalculateDeductionTotals (2023)..." -ForegroundColor Yellow
 try {
     $body = '{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"CalculateDeductionTotals","arguments":{"year":2023}}}'
-    $result = Invoke-RestMethod -Uri "$SERVER/mcp" -Method Post `
+    $result = Invoke-RestMethod -Uri "$Server/mcp" -Method Post `
         -Headers @{"Authorization"="Bearer $tokenUser1"; "Content-Type"="application/json"} `
-        -Body $body
+        -Body $body -TimeoutSec 10
     
     $text = $result.result.content[0].text
     Write-Host "    SUCCESS: Calculated totals" -ForegroundColor Green
@@ -134,9 +181,9 @@ try {
 Write-Host "`n[8] Testing CompareDeductionsYearly (2023 vs 2024)..." -ForegroundColor Yellow
 try {
     $body = '{"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"CompareDeductionsYearly","arguments":{"year1":2023,"year2":2024}}}'
-    $result = Invoke-RestMethod -Uri "$SERVER/mcp" -Method Post `
+    $result = Invoke-RestMethod -Uri "$Server/mcp" -Method Post `
         -Headers @{"Authorization"="Bearer $tokenUser1"; "Content-Type"="application/json"} `
-        -Body $body
+        -Body $body -TimeoutSec 10
     
     $text = $result.result.content[0].text
     Write-Host "    SUCCESS: Compared years" -ForegroundColor Green
@@ -150,9 +197,9 @@ try {
 Write-Host "`n[9] Testing GetDocumentsByYear (2023)..." -ForegroundColor Yellow
 try {
     $body = '{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"GetDocumentsByYear","arguments":{"year":2023}}}'
-    $result = Invoke-RestMethod -Uri "$SERVER/mcp" -Method Post `
+    $result = Invoke-RestMethod -Uri "$Server/mcp" -Method Post `
         -Headers @{"Authorization"="Bearer $tokenUser1"; "Content-Type"="application/json"} `
-        -Body $body
+        -Body $body -TimeoutSec 10
     
     $text = $result.result.content[0].text
     Write-Host "    SUCCESS: Got documents" -ForegroundColor Green
@@ -167,9 +214,9 @@ try {
 Write-Host "`n[10] Testing DATA ISOLATION (User 2 - different user)..." -ForegroundColor Yellow
 try {
     $body = '{"jsonrpc":"2.0","id":8,"method":"tools/call","params":{"name":"GetTaxpayerProfile","arguments":{}}}'
-    $result = Invoke-RestMethod -Uri "$SERVER/mcp" -Method Post `
+    $result = Invoke-RestMethod -Uri "$Server/mcp" -Method Post `
         -Headers @{"Authorization"="Bearer $tokenUser2"; "Content-Type"="application/json"} `
-        -Body $body
+        -Body $body -TimeoutSec 10
     
     $text = $result.result.content[0].text
     Write-Host "    SUCCESS: User 2 got their own profile" -ForegroundColor Green
@@ -187,9 +234,9 @@ try {
 Write-Host "`n[11] Testing Unauthorized Access (Should Fail)..." -ForegroundColor Yellow
 try {
     $body = '{"jsonrpc":"2.0","id":9,"method":"tools/list"}'
-    Invoke-RestMethod -Uri "$SERVER/mcp" -Method Post `
+    Invoke-RestMethod -Uri "$Server/mcp" -Method Post `
         -Headers @{"Content-Type"="application/json"} `
-        -Body $body
+        -Body $body -TimeoutSec 10
     Write-Host "    FAILED: Should have been rejected!" -ForegroundColor Red
 } catch {
     Write-Host "    SUCCESS: Correctly rejected (401)" -ForegroundColor Green
@@ -201,9 +248,9 @@ Write-Host "`n====== RESOURCE TESTS ======`n" -ForegroundColor Cyan
 Write-Host "[12] Testing resources/list..." -ForegroundColor Yellow
 try {
     $body = '{"jsonrpc":"2.0","id":12,"method":"resources/list"}'
-    $result = Invoke-RestMethod -Uri "$SERVER/mcp" -Method Post `
+    $result = Invoke-RestMethod -Uri "$Server/mcp" -Method Post `
         -Headers @{"Authorization"="Bearer $tokenUser1"; "Content-Type"="application/json"} `
-        -Body $body
+        -Body $body -TimeoutSec 10
     
     $resourceCount = $result.result.resources.Count
     Write-Host "    SUCCESS: Retrieved $resourceCount resources" -ForegroundColor Green
@@ -219,9 +266,9 @@ try {
 Write-Host "`n[13] Testing resources/read (Tax Brackets 2024)..." -ForegroundColor Yellow
 try {
     $body = '{"jsonrpc":"2.0","id":13,"method":"resources/read","params":{"uri":"tax://brackets/2024"}}'
-    $result = Invoke-RestMethod -Uri "$SERVER/mcp" -Method Post `
+    $result = Invoke-RestMethod -Uri "$Server/mcp" -Method Post `
         -Headers @{"Authorization"="Bearer $tokenUser1"; "Content-Type"="application/json"} `
-        -Body $body
+        -Body $body -TimeoutSec 10
     
     $data = $result.result.contents[0].text | ConvertFrom-Json
     Write-Host "    SUCCESS: Retrieved tax brackets" -ForegroundColor Green
@@ -235,9 +282,9 @@ try {
 Write-Host "`n[14] Testing resources/read (Standard Deductions 2024)..." -ForegroundColor Yellow
 try {
     $body = '{"jsonrpc":"2.0","id":14,"method":"resources/read","params":{"uri":"tax://standard-deductions/2024"}}'
-    $result = Invoke-RestMethod -Uri "$SERVER/mcp" -Method Post `
+    $result = Invoke-RestMethod -Uri "$Server/mcp" -Method Post `
         -Headers @{"Authorization"="Bearer $tokenUser1"; "Content-Type"="application/json"} `
-        -Body $body
+        -Body $body -TimeoutSec 10
     
     $data = $result.result.contents[0].text | ConvertFrom-Json
     Write-Host "    SUCCESS: Retrieved standard deductions" -ForegroundColor Green
@@ -250,9 +297,9 @@ try {
 Write-Host "`n[15] Testing resources/read (Available Deductions 2024)..." -ForegroundColor Yellow
 try {
     $body = '{"jsonrpc":"2.0","id":15,"method":"resources/read","params":{"uri":"tax://deductions/2024"}}'
-    $result = Invoke-RestMethod -Uri "$SERVER/mcp" -Method Post `
+    $result = Invoke-RestMethod -Uri "$Server/mcp" -Method Post `
         -Headers @{"Authorization"="Bearer $tokenUser1"; "Content-Type"="application/json"} `
-        -Body $body
+        -Body $body -TimeoutSec 10
     
     $data = $result.result.contents[0].text | ConvertFrom-Json
     Write-Host "    SUCCESS: Retrieved available deductions" -ForegroundColor Green
@@ -265,9 +312,9 @@ try {
 Write-Host "`n[16] Testing resources/read (Deduction Limits 2024)..." -ForegroundColor Yellow
 try {
     $body = '{"jsonrpc":"2.0","id":16,"method":"resources/read","params":{"uri":"tax://limits/2024"}}'
-    $result = Invoke-RestMethod -Uri "$SERVER/mcp" -Method Post `
+    $result = Invoke-RestMethod -Uri "$Server/mcp" -Method Post `
         -Headers @{"Authorization"="Bearer $tokenUser1"; "Content-Type"="application/json"} `
-        -Body $body
+        -Body $body -TimeoutSec 10
     
     $data = $result.result.contents[0].text | ConvertFrom-Json
     Write-Host "    SUCCESS: Retrieved deduction limits" -ForegroundColor Green
@@ -280,9 +327,9 @@ try {
 Write-Host "`n[17] Testing resources/read (Form 1040 Instructions)..." -ForegroundColor Yellow
 try {
     $body = '{"jsonrpc":"2.0","id":17,"method":"resources/read","params":{"uri":"tax://forms/1040/instructions"}}'
-    $result = Invoke-RestMethod -Uri "$SERVER/mcp" -Method Post `
+    $result = Invoke-RestMethod -Uri "$Server/mcp" -Method Post `
         -Headers @{"Authorization"="Bearer $tokenUser1"; "Content-Type"="application/json"} `
-        -Body $body
+        -Body $body -TimeoutSec 10
     
     if ($result.result.contents -and $result.result.contents[0].text) {
         $data = $result.result.contents[0].text | ConvertFrom-Json
@@ -305,10 +352,21 @@ Write-Host "  Resource Tests: 6/6" -ForegroundColor White
 Write-Host "  Total Tests: 17/17" -ForegroundColor White
 Write-Host "" -ForegroundColor White
 Write-Host "Server: C# .NET 9 Taxpayer MCP Server" -ForegroundColor White
-Write-Host "Status: Running on port 7071" -ForegroundColor White
+Write-Host "Status: Running on $Server" -ForegroundColor White
 Write-Host "Auth: JWT Bearer Token (OAuth 2.1)" -ForegroundColor White
 Write-Host "Protocol: MCP 2025-03-26" -ForegroundColor White
 Write-Host "Capabilities: 9 Tools + 18 Resources = 27 total" -ForegroundColor White
 Write-Host "Security: User-scoped data isolation VERIFIED" -ForegroundColor Green
 Write-Host ""
 
+Write-Host "Your JWT Token (for VS Code):" -ForegroundColor Cyan
+Write-Host $tokenUser1 -ForegroundColor White
+
+Write-Host "`nNext Steps:" -ForegroundColor Cyan
+Write-Host "1. Copy the JWT token above" -ForegroundColor White
+Write-Host "2. Open .vscode/mcp.json in VS Code" -ForegroundColor White
+Write-Host "3. Paste the token in the 'token' field" -ForegroundColor White
+Write-Host "4. Open Copilot Chat (Ctrl+Shift+I)" -ForegroundColor White
+Write-Host "5. Enable Agent Mode and start using the MCP server!" -ForegroundColor White
+
+Write-Host "`nReady to use!" -ForegroundColor Green
